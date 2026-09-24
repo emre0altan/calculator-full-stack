@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>calculator-api: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">calculator/backend/cmd/calculator-api/main.go (100.0%)</option>
+				
+				<option value="file1">calculator/backend/internal/calculator/calculator.go (100.0%)</option>
+				
+				<option value="file2">calculator/backend/internal/calculator/operations.go (100.0%)</option>
+				
+				<option value="file3">calculator/backend/internal/httpapi/handler.go (100.0%)</option>
+				
+				<option value="file4">calculator/backend/internal/httpapi/validation.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "errors"
+        "log"
+        "net/http"
+        "os"
+        "time"
+
+        "calculator/backend/internal/httpapi"
+)
+
+var listenAndServe = (*http.Server).ListenAndServe
+var fatalf = log.Fatalf
+
+func main() {
+        <span class="cov8" title="1">port := os.Getenv("PORT")
+        if port == "" </span>{
+                <span class="cov8" title="1">port = "8080"
+</span>        }
+
+        <span class="cov8" title="1">server := &amp;http.Server{
+                Addr:              ":" + port,
+                Handler:           newHandler(os.Getenv("WEB_DIR")),
+                ReadHeaderTimeout: 5 * time.Second,
+</span>        }
+        <span class="cov8" title="1">log.Printf("calculator listening on port %s", port)
+        if err := listenAndServe(server); err != nil &amp;&amp; !errors.Is(err, http.ErrServerClosed) </span>{
+                <span class="cov8" title="1">fatalf("serve calculator API: %v", err)
+</span>        }
+}
+
+func newHandler(webDir string) http.Handler {
+        <span class="cov8" title="1">if webDir == "" </span>{
+                <span class="cov8" title="1">return httpapi.NewHandler(nil)
+</span>        }
+        <span class="cov8" title="1">return httpapi.NewHandler(http.FileServer(http.Dir(webDir)))</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package calculator
+
+import (
+        "errors"
+        "math"
+)
+
+// Calculate applies op to a and b. Percentage means a percent of b.
+func Calculate(op Operation, a, b float64) (float64, error) {
+        <span class="cov8" title="1">if math.IsNaN(a) || math.IsInf(a, 0) </span>{
+                <span class="cov8" title="1">return 0, errors.New("a must be a finite number")
+</span>        }
+        <span class="cov8" title="1">if math.IsNaN(b) || math.IsInf(b, 0) </span>{
+                <span class="cov8" title="1">return 0, errors.New("b must be a finite number")
+</span>        }
+
+        <span class="cov8" title="1">definition, ok := operations[op]
+        if !ok </span>{
+                <span class="cov8" title="1">return 0, errors.New("unknown operation")
+</span>        }
+
+        <span class="cov8" title="1">result, err := definition.apply(a, b)
+        if err != nil </span>{
+                <span class="cov8" title="1">return 0, err
+</span>        }
+        <span class="cov8" title="1">if math.IsNaN(result) || math.IsInf(result, 0) </span>{
+                <span class="cov8" title="1">return 0, errors.New("result is not a finite number")
+</span>        }
+        <span class="cov8" title="1">return result, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package calculator
+
+import (
+        "errors"
+        "math"
+        "sort"
+)
+
+// Operation identifies a supported calculator operation.
+type Operation string
+
+const (
+        Add        Operation = "add"
+        Subtract   Operation = "subtract"
+        Multiply   Operation = "multiply"
+        Divide     Operation = "divide"
+        Modulus    Operation = "modulus"
+        Power      Operation = "power"
+        SquareRoot Operation = "sqrt"
+        Percentage Operation = "percentage"
+)
+
+type operationDefinition struct {
+        apply  func(float64, float64) (float64, error)
+        needsB bool
+}
+
+var operations = map[Operation]operationDefinition{
+        Add:        {add, true},
+        Subtract:   {subtract, true},
+        Multiply:   {multiply, true},
+        Divide:     {divide, true},
+        Modulus:    {modulus, true},
+        Power:      {power, true},
+        SquareRoot: {squareRoot, false},
+        Percentage: {percentage, true},
+}
+
+// Operations returns a sorted copy of the supported operation identifiers.
+func Operations() []Operation {
+        <span class="cov8" title="1">result := make([]Operation, 0, len(operations))
+        for op := range operations </span>{
+                <span class="cov8" title="1">result = append(result, op)
+</span>        }
+        <span class="cov8" title="1">sort.Slice(result, func(i, j int) bool </span>{ <span class="cov8" title="1">return result[i] &lt; result[j] }</span>)
+        <span class="cov8" title="1">return result</span>
+}
+
+// Valid reports whether the operation is supported.
+func (op Operation) Valid() bool {
+        <span class="cov8" title="1">_, ok := operations[op]
+        return ok
+</span>}
+
+// NeedsB reports whether an operation requires a second operand.
+func (op Operation) NeedsB() bool {
+        <span class="cov8" title="1">return operations[op].needsB
+</span>}
+
+func add(a, b float64) (float64, error) {
+        <span class="cov8" title="1">result := a + b
+        if math.IsInf(result, 0) </span>{
+                <span class="cov8" title="1">return 0, errors.New("addition overflow")
+</span>        }
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+func subtract(a, b float64) (float64, error) {
+        <span class="cov8" title="1">return a - b, nil
+</span>}
+
+func multiply(a, b float64) (float64, error) {
+        <span class="cov8" title="1">result := a * b
+        if math.IsInf(result, 0) </span>{
+                <span class="cov8" title="1">return 0, errors.New("multiplication overflow")
+</span>        }
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+func divide(a, b float64) (float64, error) {
+        <span class="cov8" title="1">if b == 0 </span>{
+                <span class="cov8" title="1">return 0, errors.New("division by zero")
+</span>        }
+        <span class="cov8" title="1">result := a / b
+        if math.IsInf(result, 0) </span>{
+                <span class="cov8" title="1">return 0, errors.New("division overflow")
+</span>        }
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+func modulus(a, b float64) (float64, error) {
+        <span class="cov8" title="1">if b == 0 </span>{
+                <span class="cov8" title="1">return 0, errors.New("modulus by zero")
+</span>        }
+        <span class="cov8" title="1">return math.Mod(a, b), nil</span>
+}
+
+func power(a, b float64) (float64, error) {
+        <span class="cov8" title="1">return math.Pow(a, b), nil
+</span>}
+
+func squareRoot(a, _ float64) (float64, error) {
+        <span class="cov8" title="1">if a &lt; 0 </span>{
+                <span class="cov8" title="1">return 0, errors.New("square root requires a non-negative number")
+</span>        }
+        <span class="cov8" title="1">return math.Sqrt(a), nil</span>
+}
+
+func percentage(a, b float64) (float64, error) {
+        <span class="cov8" title="1">return a * b / 100, nil
+</span>}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package httpapi
+
+import (
+        "bytes"
+        "encoding/json"
+        "io"
+        "log"
+        "mime"
+        "net/http"
+
+        "calculator/backend/internal/calculator"
+        "github.com/santhosh-tekuri/jsonschema/v6"
+)
+
+// NewHandler registers API routes and an optional fallback for static files.
+// A nil fallback leaves unmatched routes as HTTP 404 responses.
+func NewHandler(fallback http.Handler) http.Handler {
+        <span class="cov8" title="1">mux := http.NewServeMux()
+        mux.HandleFunc("/health", healthHandler)
+        mux.HandleFunc("/calculate", calculateHandler)
+        if fallback != nil </span>{
+                <span class="cov8" title="1">mux.Handle("/", fallback)
+</span>        }
+        <span class="cov8" title="1">return mux</span>
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+        <span class="cov8" title="1">if r.Method != http.MethodGet </span>{
+                <span class="cov8" title="1">w.Header().Set("Allow", http.MethodGet)
+                writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+                return
+</span>        }
+        <span class="cov8" title="1">writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})</span>
+}
+
+func calculateHandler(w http.ResponseWriter, r *http.Request) {
+        <span class="cov8" title="1">handleCalculate(w, r, jsonschema.UnmarshalJSON)
+</span>}
+
+func handleCalculate(w http.ResponseWriter, r *http.Request, parseDocument func(io.Reader) (any, error)) {
+        <span class="cov8" title="1">if r.Method != http.MethodPost </span>{
+                <span class="cov8" title="1">w.Header().Set("Allow", http.MethodPost)
+                writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+                return
+</span>        }
+
+        <span class="cov8" title="1">mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+        if err != nil || mediaType != "application/json" </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusUnsupportedMediaType, "Content-Type must be application/json")
+                return
+</span>        }
+
+        <span class="cov8" title="1">r.Body = http.MaxBytesReader(w, r.Body, 1&lt;&lt;20)
+        defer r.Body.Close()
+        decoder := json.NewDecoder(r.Body)
+</span>
+        <span class="cov8" title="1">var body json.RawMessage
+        if err := decoder.Decode(&amp;body); err != nil </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, "invalid JSON request body")
+                return
+</span>        }
+        <span class="cov8" title="1">if err := decoder.Decode(new(any)); err != io.EOF </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, "request body must contain one JSON object")
+                return
+</span>        }
+        <span class="cov8" title="1">document, err := parseDocument(bytes.NewReader(body))
+        if err != nil </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, "invalid JSON request body")
+                return
+</span>        }
+        <span class="cov8" title="1">var input calculationRequest
+        if err := json.Unmarshal(body, &amp;input); err != nil </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, "invalid JSON request body")
+                return
+</span>        }
+        <span class="cov8" title="1">if message := validateCalculationRequest(document, input); message != "" </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, message)
+                return
+</span>        }
+
+        <span class="cov8" title="1">op := calculator.Operation(input.Operation)
+        var b float64
+        if input.B != nil </span>{
+                <span class="cov8" title="1">b = *input.B
+</span>        }
+        <span class="cov8" title="1">result, err := calculator.Calculate(op, *input.A, b)
+        if err != nil </span>{
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, err.Error())
+                return
+</span>        }
+        <span class="cov8" title="1">writeJSON(w, http.StatusOK, calculationResponse{Result: result})</span>
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+        <span class="cov8" title="1">writeJSON(w, status, errorResponse{Error: message})
+</span>}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(status)
+        if err := json.NewEncoder(w).Encode(value); err != nil </span>{
+                <span class="cov8" title="1">log.Printf("write response: %v", err)
+</span>        }
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package httpapi
+
+import (
+        "bytes"
+        _ "embed"
+        "fmt"
+
+        "calculator/backend/internal/calculator"
+        "github.com/santhosh-tekuri/jsonschema/v6"
+)
+
+//go:embed calculation.schema.json
+var calculationSchemaJSON []byte
+
+var calculationSchema = mustCompileCalculationSchema(calculationSchemaJSON, "calculation.schema.json")
+
+func mustCompileCalculationSchema(source []byte, resource string) *jsonschema.Schema {
+        <span class="cov8" title="1">document, err := jsonschema.UnmarshalJSON(bytes.NewReader(source))
+        if err != nil </span>{
+                <span class="cov8" title="1">panic(fmt.Errorf("parse calculation schema: %w", err))</span>
+        }
+        <span class="cov8" title="1">compiler := jsonschema.NewCompiler()
+        if err := compiler.AddResource(resource, document); err != nil </span>{
+                <span class="cov8" title="1">panic(fmt.Errorf("add calculation schema: %w", err))</span>
+        }
+        <span class="cov8" title="1">schema, err := compiler.Compile(resource)
+        if err != nil </span>{
+                <span class="cov8" title="1">panic(fmt.Errorf("compile calculation schema: %w", err))</span>
+        }
+        <span class="cov8" title="1">return schema</span>
+}
+
+func validateCalculationRequest(document any, input calculationRequest) string {
+        <span class="cov8" title="1">if err := calculationSchema.Validate(document); err == nil </span>{
+                <span class="cov8" title="1">return ""
+</span>        }
+
+        // Preserve the endpoint's existing error messages for its established rules.
+        <span class="cov8" title="1">if input.Operation == "" </span>{
+                <span class="cov8" title="1">return "missing required operation"
+</span>        }
+        <span class="cov8" title="1">op := calculator.Operation(input.Operation)
+        if !op.Valid() </span>{
+                <span class="cov8" title="1">return "unknown operation"
+</span>        }
+        <span class="cov8" title="1">if input.A == nil </span>{
+                <span class="cov8" title="1">return "missing required number: a"
+</span>        }
+        <span class="cov8" title="1">if op.NeedsB() &amp;&amp; input.B == nil </span>{
+                <span class="cov8" title="1">return "missing required number: b"
+</span>        }
+        <span class="cov8" title="1">return "invalid JSON request body"</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

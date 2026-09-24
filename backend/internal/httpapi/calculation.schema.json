@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["operation", "a"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["add", "subtract", "multiply", "divide", "modulus", "power", "sqrt", "percentage"]
+    },
+    "a": { "type": "number" },
+    "b": { "type": "number" }
+  },
+  "additionalProperties": false,
+  "if": {
+    "required": ["operation"],
+    "properties": { "operation": { "not": { "const": "sqrt" } } }
+  },
+  "then": { "required": ["b"] }
+}
